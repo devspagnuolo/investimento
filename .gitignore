@@ -1,0 +1,14 @@
+# Sistema e editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Dependências e artefatos locais
+node_modules/
+dist/
+*.log
+
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
