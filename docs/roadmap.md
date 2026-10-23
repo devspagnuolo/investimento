@@ -22,7 +22,7 @@ Fluxo atual: cadastro ou CSV → validação → carteira local → análise de 
 3. **Backend modular único:** autenticação, PostgreSQL, isolamento por usuário, migrações, backups e auditoria de eventos. Primeiro consolidar domínio e limites; separar serviços somente com necessidade observada.
 4. **Open Finance:** escolher provedor e comprovar cobertura, consentimento, revogação, custo e condições contratuais. Não confundir compartilhamento de dados com permissão de negociar ativos.
 5. **Pesquisa quantitativa e IA:** validação temporal fora da amostra, custos, comparação com estratégia simples, rastreabilidade de versões e limites de uso. Modelos preditivos e textos de IA não garantem retorno.
-6. **Execução:** adaptadores autorizados, aprovação explícita por operação, credenciais no servidor, idempotência, reconciliação, validade de ordens, controle de risco e trilha auditável. Tributos dependem de dados completos e regras vigentes. Não há execução nesta versão.
+6. **Execução:** adaptadores autorizados, aprovação explícita por operação, credenciais no servidor, idempotência, reconciliação, validade de ordens, controle de risco e trilha auditável. Tributos dependem de dados completos e regras vigentes. Compras à vista na XP via MetaTrader 5, com reconciliação, estão implementadas (veja automation.md).
 7. **SaaS:** pagamentos, administração, MFA, RBAC, proteção e retenção de dados; revisão jurídica e de segurança antes de receber dados de clientes. Metas de escala e latência precisam de testes de carga.
 
 ## Modelo de domínio futuro (não implementado)
