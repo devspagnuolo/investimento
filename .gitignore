@@ -12,3 +12,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Dados operacionais privados
+.investai/

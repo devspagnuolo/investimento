@@ -1,4 +1,5 @@
 import {analyze,validateHolding,parseCSV,project,profiles} from './engine.js';
+const automationLink=document.createElement('a');automationLink.href='/automation';automationLink.textContent='⇄ Automação Brasil';document.querySelector('nav').append(automationLink);
 const key='investai.v1';
 const $=id=>document.getElementById(id);
 let state={holdings:[],profile:'Moderado',demo:false};
