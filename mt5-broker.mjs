@@ -10,7 +10,7 @@ export function mt5Broker({url='http://127.0.0.1:4174',token,account,fetch=globa
     return data;
   }
   const broker={
-    name:'XP / MetaTrader 5',ready:false,status:'Verificando a ponte MT5…',
+    name:'XP / MetaTrader 5',ready:false,tradeAllowed:false,status:'Verificando a ponte MT5…',
     // Identidade: só fica pronto se a conta logada no terminal for exatamente a configurada.
     async check(){
       try{
@@ -19,9 +19,8 @@ export function mt5Broker({url='http://127.0.0.1:4174',token,account,fetch=globa
         if(!h.connected)throw Error('Terminal MT5 sem conexão com a corretora.');
         if(String(h.login)!==String(account))throw Error(`Conta logada no MT5 (${h.login}) difere da configurada.`);
         if(h.currency!=='BRL')throw Error('A conta MT5 precisa operar em BRL.');
-        if(!h.tradeAllowed)throw Error('Negociação automática desabilitada no terminal ou na conta (habilite "Algo Trading").');
-        broker.ready=true;broker.status=`Conta ${h.login} conectada (${h.server}).`;
-      }catch(e){broker.ready=false;broker.status=e.name==='TimeoutError'?'Ponte MT5 sem resposta.':e.cause?.code==='ECONNREFUSED'?'Ponte MT5 não está em execução.':e.message;}
+        broker.ready=true;broker.tradeAllowed=Boolean(h.tradeAllowed);broker.status=broker.tradeAllowed?`Conta ${h.login} conectada (${h.server}); Algo Trading habilitado.`:`Conta ${h.login} conectada (${h.server}); Algo Trading desligado. Observação disponível, envio real bloqueado.`;
+      }catch(e){broker.ready=false;broker.tradeAllowed=false;broker.status=e.name==='TimeoutError'?'Ponte MT5 sem resposta.':e.cause?.code==='ECONNREFUSED'?'Ponte MT5 não está em execução.':e.message;}
     },
     snapshot:symbols=>call(`/snapshot?symbols=${encodeURIComponent(symbols.join(','))}`),
     submit:order=>call('/orders',{clientOrderId:order.clientOrderId,symbol:order.symbol,quantity:order.quantity,limitPrice:order.limitPrice}),
