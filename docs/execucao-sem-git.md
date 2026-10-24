@@ -47,6 +47,23 @@ node --env-file-if-exists=.env server.mjs
 
 Use a porta gravada em `.env` para abrir `http://127.0.0.1:<PORT>/automation`. Mantenha o MT5, a ponte e o servidor abertos durante a observação. Feche as janelas da ponte e do servidor para encerrá-los; o motor volta desativado quando reiniciado.
 
+
+## Inicialização automática opcional
+
+Depois de configurar o .env, salvar uma política com os ativos escolhidos e confirmar que o envio real continua desligado, é possível iniciar a ponte e o servidor automaticamente na sessão do Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-investai-autostart.ps1
+```
+
+O instalador cria uma tarefa do Agendador do Windows para o usuário atual e inicia o supervisor imediatamente. Ele aguarda o MT5 estar aberto e conectado ao servidor XP/BRL correto, inicia ou recupera a ponte e o servidor e grava logs em %LOCALAPPDATA%\InvestAI\logs. O computador precisa estar ligado, o usuário conectado e o MT5 logado; isso não é hospedagem 24/7.
+
+A tarefa nunca habilita Algo Trading nem envio real. Após reiniciar, o motor continua desativado até você ativar Observação na interface local. Para remover a tarefa:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-investai-autostart.ps1 -Remove
+```
+
 ## Se algo falhar
 
 - **Conta divergente:** o número informado deve ser o login MT5, não CPF, número de conta bancária ou senha do portal.
