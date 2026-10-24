@@ -18,6 +18,14 @@ Sem configuração, o servidor usa `disconnectedBroker`, que recusa consultas e 
 - Modo `observe`: lê a conta real e registra as compras planejadas ou o motivo do bloqueio, sem enviar ordens.
 - Reiniciar desativa o motor; ordens interrompidas em `submitting` passam a `unknown`.
 
+## Avaliação e etapa seguinte
+
+Existe agora um conector local XP/MetaTrader 5 com verificação da conta configurada, leitura de posições e cotações, modos de observação e envio real confirmado, além de reconciliação e trava de processo único. Isso é implementação de código; a conexão com sua conta ainda precisa ser configurada e validada neste computador. `INVESTAI_MT5_CUSTODY_CONFIRMED=1` declara que a carteira no terminal é completa, mas o aplicativo não verifica essa afirmação de forma independente. Não ative envio real até conferir os dados do terminal e confirmar com a XP cobertura, saldo liquidado, fuso, permissões e custos.
+
+A autenticação ocorre no terminal oficial controlado pelo usuário. O InvestAI não deve coletar senha, assinatura eletrônica ou código de autenticação no chat, numa página própria ou em `localStorage`. O navegador pode ser usado para consultar instruções oficiais, não para automatizar login ou ordens por cliques. Comece pelo modo **observação** durante um pregão e compare conta, posições, saldo e cotações com o terminal; mantenha envio real desativado até essa validação e revisão dos limites.
+
+O roteiro detalhado e os critérios estão em [avaliação da plataforma](roadmap.md#avaliação-da-plataforma--23102026) e [operação com a XP](operacao-xp-mt5.md).
+
 ## Contrato do adaptador
 
 - `ready` e `status`; `check()` atualiza a conexão e a identidade da conta.
