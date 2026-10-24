@@ -8,7 +8,11 @@ O planejador calcula compras para reduzir desvios das metas usando o patrimônio
 
 ## Adaptadores
 
-Sem configuração, o servidor usa `disconnectedBroker`, que recusa consultas e envios. Com `INVESTAI_BROKER=mt5`, usa `mt5Broker` (`mt5-broker.mjs`), que conversa com a ponte `connectors/mt5_bridge.py`. O adaptador só fica pronto quando a conta logada no terminal é a de `INVESTAI_MT5_ACCOUNT`, em BRL, com negociação automática habilitada. Instruções em [operação com a XP](operacao-xp-mt5.md).
+Sem configuração, o servidor usa `disconnectedBroker`, que recusa consultas e envios. Com `INVESTAI_BROKER=mt5`, usa `mt5Broker` (`mt5-broker.mjs`), que conversa com a ponte `connectors/mt5_bridge.py`. O adaptador fica conectado quando a conta logada é a de `INVESTAI_MT5_ACCOUNT` e opera em BRL. Isso permite o modo observação mesmo com Algo Trading desligado; envio real também exige permissão de negociação. Instruções em [operação com a XP](operacao-xp-mt5.md).
+
+## Proteção do envio real
+
+O envio real é bloqueado por padrão. `INVESTAI_LIVE_TRADING_ENABLED=1` é necessário para ativá-lo; o padrão recomendado é `0`. Mesmo com opt-in, a ativação exige `tradeAllowed` verdadeiro no terminal e confirmação na interface. A ponte também bloqueia ordens cujo contrato, volume mínimo ou passo de volume não sejam exatamente uma unidade. Essa restrição evita tratar lotes MT5 como quantidades inteiras sem equivalência confirmada; não valida taxas, custódia ou valor de cada símbolo.
 
 ## Ciclo e reconciliação
 

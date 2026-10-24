@@ -6,13 +6,13 @@ Roteiro para colocar o motor de compras em operação real com limites baixos. T
 
 - MetaTrader 5 habilitado na sua conta XP e terminal instalado, com login feito por você.
 - Confirme com a XP: se as posições mantidas em custódia (não apenas day trade) aparecem no MT5, se o saldo exibido é dinheiro liquidado, o fuso do horário do servidor e os custos por ordem. Essas respostas definem as variáveis `INVESTAI_MT5_CUSTODY_CONFIRMED` e `INVESTAI_MT5_SERVER_UTC_OFFSET`.
-- No terminal, habilite **Algo Trading** (botão na barra de ferramentas). Sem isso a ponte informa que a negociação automática está desabilitada.
+- Para observar, o terminal pode permanecer com **Algo Trading** desligado. Envio real exige habilitá-lo, mas só depois de concluir as verificações abaixo.
 
 ## 2. Instalação
 
 1. Node.js 22.9 ou superior e Python 3 para Windows.
 2. `py -m pip install MetaTrader5`
-3. Copie `.env.example` para `.env` e preencha `INVESTAI_MT5_ACCOUNT` e `INVESTAI_BRIDGE_TOKEN`. O `.env` fica fora do Git. Não coloque a senha da XP nele.
+3. Copie `.env.example` para `.env` e preencha `INVESTAI_MT5_ACCOUNT` e `INVESTAI_BRIDGE_TOKEN`. Mantenha `INVESTAI_LIVE_TRADING_ENABLED=0`. O `.env` fica fora do Git. Não coloque a senha da XP nele.
 
 ## 3. Execução
 
@@ -29,8 +29,8 @@ Abra http://127.0.0.1:4173/automation. O quadro "MetaTrader 5" deve mostrar "Con
 
 1. Salve as regras com limites baixos (padrão: R$ 100 por ordem e R$ 300 por dia) e poucos ativos conhecidos.
 2. Opcional: clique em **Ativar observação** por um pregão. O motor lê a conta real e registra em "Observações recentes" o que compraria, sem enviar ordens. Mensagens "Bloqueado" mostram o que ainda não confere (por exemplo, custódia não confirmada ou cotação vencida).
-3. Clique em **Ativar envio real** e confirme. O motor envia uma ordem limitada de compra por ciclo, com validade no dia, e acompanha cada ordem a cada 15 segundos até ser executada, cancelada ou expirada. Só então avalia a próxima compra.
-4. Confira as ordens na XP no primeiro dia e compare com o histórico da tela.
+3. O envio real está bloqueado enquanto `INVESTAI_LIVE_TRADING_ENABLED=0`. Não altere para `1` antes de confirmar com a XP a cobertura da custódia, o saldo liquidado e os custos, e de validar no terminal os contratos/tamanhos de unidade de cada ticker permitido. A ponte só aceita ativos com contrato, volume mínimo e passo exatamente iguais a uma unidade.
+4. Somente após essas validações, se você decidir prosseguir, habilite Algo Trading, altere `INVESTAI_LIVE_TRADING_ENABLED=1`, reinicie o servidor e confirme a ativação real pela tela. O motor envia uma ordem limitada por ciclo, com validade no dia, e acompanha os estados. Confira cada ordem na XP.
 
 ## Situações de atenção
 

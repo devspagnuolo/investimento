@@ -2,7 +2,7 @@
 
 Aplicativo de acompanhamento e automação de investimentos, com prioridade para o mercado brasileiro e a conta XP. O objetivo é consultar a carteira e executar operações dentro de regras previamente configuradas, reduzindo intervenções recorrentes. A expansão internacional fica para uma etapa posterior.
 
-**Estado atual:** painel local, motor de automação, ponte local com MetaTrader 5, modo observação, envio real e reconciliação estão implementados. A ponte foi testada com terminal simulado, mas **não está configurada nem validada na conta XP do usuário**. O próximo passo é configurar localmente e comparar os dados em modo observação; não ative envio real antes de confirmar com a XP a cobertura, custos e condições operacionais. Veja [avaliação](docs/roadmap.md#avaliação-da-plataforma--23102026) e [guia XP/MT5](docs/operacao-xp-mt5.md). Dados fictícios do painel manual não alimentam o motor.
+**Estado atual:** painel local, motor de automação, ponte local com MetaTrader 5, modo observação, envio real e reconciliação estão implementados. O envio real fica bloqueado por padrão (`INVESTAI_LIVE_TRADING_ENABLED=0`) e também recusa ativos sem contrato de volume unitário validado. A ponte foi testada com terminal simulado, mas **não está configurada nem validada na conta XP do usuário**. O próximo passo é configurar localmente e comparar os dados em modo observação; não ative envio real antes de confirmar com a XP a cobertura, custos e condições operacionais. Veja [avaliação](docs/roadmap.md#avaliação-da-plataforma--23102026) e [guia XP/MT5](docs/operacao-xp-mt5.md). Dados fictícios do painel manual não alimentam o motor.
 
 Última atualização: 23/10/2026.
 
@@ -32,7 +32,7 @@ Implementado:
 - Modo observação opcional: lê a conta real e registra o que compraria, sem enviar ordens.
 - Trava de instância única, histórico persistente e desativação ao reiniciar.
 
-Vendas, resgates, transferências, derivativos, seleção preditiva de ativos, feriados da B3 e cálculo de custos no orçamento não estão implementados.
+Vendas, resgates, transferências, derivativos, seleção preditiva de ativos, feriados da B3 e cálculo de custos no orçamento não estão implementados. Envio real requer opt-in local explícito e permanece inadequado até validar conta, custódia, custos e cada contrato MT5.
 
 ## Integração XP pelo MetaTrader 5
 

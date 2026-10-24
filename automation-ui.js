@@ -8,7 +8,7 @@ function resolveButton(order){const button=document.createElement('button');butt
 async function refresh(){try{const data=current=await request('');
   $('connection').textContent=data.connected?'XP conectada':'XP não conectada';$('broker-status').textContent=data.brokerStatus;
   $('reason').textContent=`${data.enabled?(data.mode==='live'?'Envio real ativo · ':'Observação ativa · '):''}${data.reason}`;
-  for(const id of ['activate-live','activate-observe']){$(id).disabled=!data.connected||data.enabled;$(id).title=data.connected?'':'Conecte o MetaTrader 5 primeiro';}
+  $('activate-observe').disabled=!data.connected||data.enabled;$('activate-observe').title=data.connected?'Apenas consulta; não envia ordens.':'Conecte o MetaTrader 5 primeiro';$('activate-live').disabled=!data.connected||!data.liveTradingEnabled||!data.tradeAllowed||data.enabled;$('activate-live').title=!data.connected?'Conecte o MetaTrader 5 primeiro':!data.liveTradingEnabled?'Envio real bloqueado por padrão; habilite a variável local depois das validações':!data.tradeAllowed?'Ative Algo Trading no terminal após concluir as validações':'Envia ordens reais à XP';
   if(!initialized){for(const [key,value]of Object.entries(data.policy))if(key!=='targets')form.elements[key].value=value;form.elements.targets.value=data.policy.targets.map(t=>`${t.symbol}=${t.weight}`).join(', ');initialized=true;}
   $('orders').replaceChildren(...[...data.orders].reverse().slice(0,100).map(o=>row([new Date(o.createdAt).toLocaleString('pt-BR'),o.symbol,o.quantity,o.filledQuantity??'—',money(o.limitPrice),labels[o.status]||o.status,o.status==='unknown'&&!data.enabled?resolveButton(o):''])));
   if(!data.orders.length)$('orders').append(row(['Nenhuma ordem enviada.'],7));

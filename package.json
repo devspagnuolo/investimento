@@ -3,6 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node --env-file-if-exists=.env server.mjs", "test": "node --test", "test:bridge": "python3 -m unittest discover -s connectors" },
+  "scripts": { "start": "node --env-file-if-exists=.env server.mjs", "test": "node --test", "test:bridge": "node connectors/run_bridge_tests.mjs" },
   "engines": { "node": ">=22.9" }
 }

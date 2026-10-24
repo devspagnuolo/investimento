@@ -43,9 +43,9 @@ const brokerStatus={open:'accepted',partial:'partial',filled:'filled',cancelled:
 // Valor comprometido no limite diário: ordens canceladas contam apenas a parte executada.
 export function committed(o){if(['rejected','cancelled-local','not-sent'].includes(o.status))return 0;if(o.status==='cancelled')return Number(((o.filledQuantity||0)*(o.averagePrice||o.limitPrice)).toFixed(2));return o.notional;}
 export class Automation{
-  constructor({state,broker,persist,now=()=>Date.now()}){this.state=state;this.broker=broker;this.persist=persist;this.now=now;this.busy=false;state.mode??='live';state.observations??=[];}
+  constructor({state,broker,persist,liveTradingEnabled=false,now=()=>Date.now()}){this.state=state;this.broker=broker;this.persist=persist;this.liveTradingEnabled=liveTradingEnabled;this.now=now;this.busy=false;state.mode??='live';state.observations??=[];}
   async pause(reason='Pausado pelo usuário'){this.state.enabled=false;this.state.reason=reason;await this.persist(this.state);}
-  async activate(mode='live'){if(!['live','observe'].includes(mode))throw Error('Modo inválido.');validatePolicy(this.state.policy);if(!this.broker.ready)throw Error('XP ainda não conectada. Configure o adaptador e valide a conta antes de ativar.');this.state.mode=mode;this.state.enabled=true;this.state.lastRun=null;this.state.reason=mode==='live'?'Ativo: envio real.':'Ativo: observação, sem envio de ordens.';await this.persist(this.state);}
+  async activate(mode='live'){if(!['live','observe'].includes(mode))throw Error('Modo inválido.');validatePolicy(this.state.policy);if(!this.broker.ready)throw Error('XP ainda não conectada. Configure o adaptador e valide a conta antes de ativar.');if(mode==='live'&&!this.liveTradingEnabled)throw Error('Envio real bloqueado. Habilite INVESTAI_LIVE_TRADING_ENABLED somente após validar a conta, os ativos e os custos.');if(mode==='live'&&this.broker.tradeAllowed!==true)throw Error('Algo Trading não está habilitado na conta/terminal.');this.state.mode=mode;this.state.enabled=true;this.state.lastRun=null;this.state.reason=mode==='live'?'Ativo: envio real.':'Ativo: observação, sem envio de ordens.';await this.persist(this.state);}
   // Confirmação manual, após conferência na XP, de que uma ordem desconhecida não chegou à corretora.
   async resolveUnknown(id){const order=this.state.orders.find(o=>o.id===id);if(!order||!['unknown','submitting'].includes(order.status)||this.busy)throw Error('Somente ordens com resultado desconhecido podem ser resolvidas manualmente.');order.status='not-sent';order.resolvedAt=this.now();await this.persist(this.state);}
   async reconcile(){
@@ -68,6 +68,8 @@ export class Automation{
     try{
       if(!this.broker.ready)throw Error('Conexão com a corretora indisponível.');
       if(live){
+        if(!this.liveTradingEnabled)throw Error('Envio real bloqueado por configuração.');
+        if(this.broker.tradeAllowed!==true)throw Error('Negociação automática não está habilitada no terminal.');
         const pending=await this.reconcile();
         if(pending.some(o=>o.status==='unknown'&&this.now()-o.createdAt>unknownGraceMs))throw Error('Envio inconclusivo não localizado na corretora. Confira na XP e resolva a ordem antes de continuar.');
         if(pending.length){this.state.reason=`Acompanhando ordem ${pending[0].symbol} (${pending[0].status}); novas compras aguardam a execução.`;await this.persist(this.state);return;}
@@ -96,4 +98,4 @@ export class Automation{
     }catch(e){await this.pause(e.message);}finally{this.busy=false;}
   }
 }
-export const disconnectedBroker={ready:false,name:'XP / MetaTrader 5',status:'Adaptador não configurado.',async check(){},async snapshot(){throw Error('XP não conectada.');},async submit(){throw Error('XP não conectada.');},async order(){throw Error('XP não conectada.');}};
+export const disconnectedBroker={ready:false,tradeAllowed:false,name:'XP / MetaTrader 5',status:'Adaptador não configurado.',async check(){},async snapshot(){throw Error('XP não conectada.');},async submit(){throw Error('XP não conectada.');},async order(){throw Error('XP não conectada.');}};

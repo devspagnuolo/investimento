@@ -96,16 +96,26 @@ def health(mt5):
     }
 
 
+def one_share_contract(info):
+    return info is not None and abs(float(info.trade_contract_size) - 1.0) < 1e-9 and abs(float(info.volume_min) - 1.0) < 1e-9 and abs(float(info.volume_step) - 1.0) < 1e-9
+
+
 def snapshot(mt5, symbols, cfg, now):
     account, terminal = mt5.account_info(), mt5.terminal_info()
     if account is None or terminal is None:
         raise BridgeError(f"Conta MT5 indisponível: {mt5.last_error()}")
     positions = {}
+    positions_complete = True
     for p in mt5.positions_get() or ():
-        quantity = int(p.volume) if p.type == POSITION_TYPE_BUY else -int(p.volume)
+        info = mt5.symbol_info(p.symbol)
+        volume = float(p.volume)
+        contract_size = float(info.trade_contract_size) if info is not None else 1.0
+        if not one_share_contract(info) or not volume.is_integer():
+            positions_complete = False
+        quantity = volume if p.type == POSITION_TYPE_BUY else -volume
         current = positions.setdefault(p.symbol, {"symbol": p.symbol, "quantity": 0, "value": 0.0})
         current["quantity"] += quantity
-        current["value"] += quantity * p.price_current
+        current["value"] += quantity * contract_size * p.price_current
     offset_ms = cfg["server_offset_hours"] * 3600000
     quotes = {}
     for symbol in symbols:
@@ -119,14 +129,14 @@ def snapshot(mt5, symbols, cfg, now):
             "timestamp": int(tick.time_msc - offset_ms),
             "currency": info.currency_profit,
             "assetType": classify(symbol, info.path),
-            "canBuy": info.trade_mode in (SYMBOL_TRADE_MODE_FULL, SYMBOL_TRADE_MODE_LONGONLY),
+            "canBuy": info.trade_mode in (SYMBOL_TRADE_MODE_FULL, SYMBOL_TRADE_MODE_LONGONLY) and one_share_contract(info),
             "lot": int(info.volume_min),
             "tickSize": info.trade_tick_size,
         }
     return {
         "currency": account.currency,
         # Só é completa se o usuário confirmou que o MT5 mostra toda a custódia da conta XP.
-        "complete": cfg["custody_confirmed"],
+        "complete": cfg["custody_confirmed"] and positions_complete,
         "marketOpen": bool(terminal.connected and in_session(now, cfg["session"])),
         "timestamp": int(now.timestamp() * 1000),
         "equity": account.equity,
@@ -142,6 +152,9 @@ def submit(mt5, body, cfg):
     client_id = body.get("clientOrderId")
     if not isinstance(symbol, str) or not isinstance(quantity, int) or quantity <= 0 or not isinstance(price, (int, float)) or price <= 0 or not isinstance(client_id, str):
         raise BridgeError("Ordem inválida.")
+    info = mt5.symbol_info(symbol)
+    if not one_share_contract(info):
+        raise BridgeError("Envio bloqueado: o contrato do ativo não corresponde a uma unidade inteira validada.")
     request = {
         "action": TRADE_ACTION_PENDING,
         "symbol": symbol,
@@ -176,7 +189,7 @@ def lookup(mt5, ticket, client_id, now):
     order = found[0]
     active = bool(mt5.orders_get(ticket=order.ticket))
     deals = [d for d in mt5.history_deals_get(since, now + timedelta(days=1)) or () if d.order == order.ticket]
-    filled = int(sum(d.volume for d in deals)) if deals else int(order.volume_initial - order.volume_current)
+    filled = sum(d.volume for d in deals) if deals else order.volume_initial - order.volume_current
     average = sum(d.volume * d.price for d in deals) / sum(d.volume for d in deals) if deals else None
     fees = -sum(d.commission + d.fee for d in deals) if deals else None
     if active:

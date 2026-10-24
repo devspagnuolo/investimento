@@ -19,6 +19,7 @@ CFG = {"token": "t" * 32, "port": 0, "terminal": None, "custody_confirmed": True
 class FakeMT5:
     def __init__(self):
         self.sent, self.retcode, self.active, self.history, self.deals = [], 10008, [], [], []
+        self.volume_step, self.contract_size = 1.0, 1.0
 
     def account_info(self):
         return NS(login=123, server="XPMT5-PRD", currency="BRL", equity=1000.0, balance=500.0, margin_free=450.0, trade_allowed=True, trade_expert=True)
@@ -36,7 +37,7 @@ class FakeMT5:
         return True
 
     def symbol_info(self, symbol):
-        return NS(currency_profit="BRL", path="BOVESPA\\ETF\\" + symbol, trade_mode=4, volume_min=1.0, trade_tick_size=0.01)
+        return NS(currency_profit="BRL", path="BOVESPA\\ETF\\" + symbol, trade_mode=4, volume_min=1.0, volume_step=self.volume_step, trade_contract_size=self.contract_size, trade_tick_size=0.01)
 
     def symbol_info_tick(self, symbol):
         # Horário do servidor em Brasília (UTC-3).
@@ -65,6 +66,13 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(s["quotes"]["BOVA11"]["assetType"], "etf")
         self.assertEqual(s["positions"][0], {"symbol": "BOVA11", "quantity": 10, "value": 125.0})
         self.assertFalse(bridge.snapshot(FakeMT5(), [], {**CFG, "custody_confirmed": False}, NOW)["complete"])
+        nonstandard = FakeMT5()
+        nonstandard.volume_step = 0.1
+        snapshot = bridge.snapshot(nonstandard, ["BOVA11"], CFG, NOW)
+        self.assertFalse(snapshot["complete"])
+        self.assertFalse(snapshot["quotes"]["BOVA11"]["canBuy"])
+        with self.assertRaises(bridge.BridgeError):
+            bridge.submit(nonstandard, {"clientOrderId": "id", "symbol": "BOVA11", "quantity": 1, "limitPrice": 12.51}, CFG)
         self.assertFalse(bridge.snapshot(FakeMT5(), [], CFG, datetime(2026, 10, 24, 16, tzinfo=timezone.utc))["marketOpen"])
 
     def test_envio_aceito_recusado_e_inconclusivo(self):
