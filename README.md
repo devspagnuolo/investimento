@@ -2,13 +2,15 @@
 
 Aplicativo de acompanhamento e automação de investimentos, com prioridade para o mercado brasileiro e a conta XP. O objetivo é consultar a carteira e executar operações dentro de regras previamente configuradas, reduzindo intervenções recorrentes. A expansão internacional fica para uma etapa posterior.
 
-**Estado atual:** painel local, motor de automação, ponte local com MetaTrader 5, modo observação, envio real e reconciliação estão implementados. O envio real fica bloqueado por padrão (`INVESTAI_LIVE_TRADING_ENABLED=0`) e também recusa ativos sem contrato de volume unitário validado. A ponte foi testada com terminal simulado, mas **não está configurada nem validada na conta XP do usuário**. O próximo passo é configurar localmente e comparar os dados em modo observação; não ative envio real antes de confirmar com a XP a cobertura, custos e condições operacionais. Veja [avaliação](docs/roadmap.md#avaliação-da-plataforma--23102026) e [guia XP/MT5](docs/operacao-xp-mt5.md). Dados fictícios do painel manual não alimentam o motor.
+**Estado atual:** painel local, motor de automação, ponte local com MetaTrader 5, modo observação, envio real e reconciliação estão implementados. O envio real fica bloqueado por padrão (`INVESTAI_LIVE_TRADING_ENABLED=0`) e também recusa ativos sem contrato de volume unitário validado. A ponte foi testada com terminal simulado, mas **não está validada na conta XP do usuário**. Comece pelo [guia para executar pelo ZIP, sem Git local](docs/execucao-sem-git.md) e compare os dados em modo observação; não ative envio real antes de confirmar com a XP cobertura, custos e condições operacionais. Veja [avaliação](docs/roadmap.md#avaliação-da-plataforma--23102026) e [guia XP/MT5](docs/operacao-xp-mt5.md). Dados fictícios do painel manual não alimentam o motor.
 
 Última atualização: 23/10/2026.
 
 ## Executar
 
 Requisito: Node.js 22.9 ou superior. Para a conexão com a XP: Windows, MetaTrader 5 e Python 3.
+
+Para configurar e iniciar a ponte XP/MT5 sem clonar um repositório Git, siga o [guia de execução sem Git](docs/execucao-sem-git.md). O script de primeira configuração cria o `.env` local e mantém o envio real desativado.
 
 ```sh
 npm start
