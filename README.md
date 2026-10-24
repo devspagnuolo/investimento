@@ -12,7 +12,7 @@ Aplicativo de acompanhamento e automação de investimentos, com prioridade para
 
 Requisito: Node.js 22.9 ou superior. Para a conexão com a XP: Windows, MetaTrader 5 e Python 3.
 
-Para configurar e iniciar a ponte XP/MT5 sem clonar um repositório Git, siga o [guia de execução sem Git](docs/execucao-sem-git.md). O script de primeira configuração cria o `.env` local e mantém o envio real desativado.
+Para configurar e iniciar a ponte XP/MT5 sem clonar um repositório Git, siga o [guia de execução sem Git](docs/execucao-sem-git.md). O script de primeira configuração cria o `.env` local e mantém o envio real desativado. O guia também explica como instalar uma tarefa opcional do Windows para iniciar e recuperar a ponte e o servidor na sessão do usuário, sem reativar ordens.
 
 ```sh
 npm start

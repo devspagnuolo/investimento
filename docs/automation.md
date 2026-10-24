@@ -43,6 +43,13 @@ Validar a ponte na conta XP real (custódia, saldo liquidado, fuso e custos) com
 
 O servidor só escuta loopback e as escritas exigem Origin local e JSON. Isso não é autenticação multiusuário: não expor o servidor à internet ou usar encaminhamento de porta. Segredos da corretora não devem ser colocados em formulário, localStorage ou Git. A reserva por ordem atualmente considera valor nominal, sem cálculo de corretagem ou tributos.
 
+
+## Inicialização local sem intervenção recorrente
+
+No Windows, install-investai-autostart.ps1 cria uma tarefa do Agendador para manter o supervisor da ponte e do servidor durante a sessão do usuário. O supervisor aguarda o MT5 conectado, valida a conta/servidor configurados e reinicia os processos locais se caírem. Ele não ativa o motor e não envia ordens. Reiniciar o Windows mantém o motor desativado por segurança; a observação deve ser reativada na interface depois de conferir a conta e a política.
+
+O computador e o MT5 precisam estar ligados e com sessão XP válida. Suspensão do computador, logout e queda da internet interrompem o serviço. Logs do supervisor ficam em %LOCALAPPDATA%\InvestAI\logs. Remova a tarefa com powershell -ExecutionPolicy Bypass -File .\install-investai-autostart.ps1 -Remove.
+
 ## Verificação
 
 `npm test` cobre limites, vencimento de dados, sessão, lotes, bloqueio de envio desconectado, persistência antes do envio, timeout, reconciliação, observação, pausa, trava de instância e concorrência. `npm run test:bridge` cobre a ponte com um terminal simulado. Esses testes não certificam compatibilidade com a XP nem execução em bolsa.
