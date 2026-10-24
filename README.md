@@ -4,7 +4,9 @@ Aplicativo de acompanhamento e automação de investimentos, com prioridade para
 
 **Estado atual:** painel local, motor de automação, ponte local com MetaTrader 5, modo observação, envio real e reconciliação estão implementados. O envio real fica bloqueado por padrão (`INVESTAI_LIVE_TRADING_ENABLED=0`) e também recusa ativos sem contrato de volume unitário validado. A ponte foi testada com terminal simulado, mas **não está validada na conta XP do usuário**. Comece pelo [guia para executar pelo ZIP, sem Git local](docs/execucao-sem-git.md) e compare os dados em modo observação; não ative envio real antes de confirmar com a XP cobertura, custos e condições operacionais. Veja [avaliação](docs/roadmap.md#avaliação-da-plataforma--23102026) e [guia XP/MT5](docs/operacao-xp-mt5.md). Dados fictícios do painel manual não alimentam o motor.
 
-Última atualização: 23/10/2026.
+Última atualização: 24/10/2026.
+
+**Painel web:** [abrir InvestAI](https://devspagnuolo.github.io/investimento/). A versão pública é estática: dados ficam no navegador e não há sincronização entre dispositivos. A automação MT5 continua local no Windows, requer o terminal aberto e não é controlada pelo site. O envio de ordens permanece desativado por padrão.
 
 ## Executar
 
