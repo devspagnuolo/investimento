@@ -37,34 +37,63 @@ export function planPurchases(s,policy,dailyUsed,now=Date.now()){
   return orders;
 }
 function dayKey(now){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);}
+const unknownGraceMs=120000;
+export const pendingStatuses=['submitting','unknown','accepted','partial'];
+const brokerStatus={open:'accepted',partial:'partial',filled:'filled',cancelled:'cancelled',rejected:'rejected'};
+// Valor comprometido no limite diário: ordens canceladas contam apenas a parte executada.
+export function committed(o){if(['rejected','cancelled-local','not-sent'].includes(o.status))return 0;if(o.status==='cancelled')return Number(((o.filledQuantity||0)*(o.averagePrice||o.limitPrice)).toFixed(2));return o.notional;}
 export class Automation{
-  constructor({state,broker,persist,now=()=>Date.now()}){this.state=state;this.broker=broker;this.persist=persist;this.now=now;this.busy=false;}
+  constructor({state,broker,persist,now=()=>Date.now()}){this.state=state;this.broker=broker;this.persist=persist;this.now=now;this.busy=false;state.mode??='live';state.observations??=[];}
   async pause(reason='Pausado pelo usuário'){this.state.enabled=false;this.state.reason=reason;await this.persist(this.state);}
-  async activate(){validatePolicy(this.state.policy);if(!this.broker.ready)throw Error('XP ainda não conectada. Configure o adaptador e valide a conta antes de ativar.');if(this.state.orders.some(o=>['submitting','unknown','accepted'].includes(o.status)))throw Error('Há ordens que exigem reconciliação.');this.state.enabled=true;this.state.reason='Ativo';await this.persist(this.state);}
+  async activate(mode='live'){if(!['live','observe'].includes(mode))throw Error('Modo inválido.');validatePolicy(this.state.policy);if(!this.broker.ready)throw Error('XP ainda não conectada. Configure o adaptador e valide a conta antes de ativar.');this.state.mode=mode;this.state.enabled=true;this.state.lastRun=null;this.state.reason=mode==='live'?'Ativo: envio real.':'Ativo: observação, sem envio de ordens.';await this.persist(this.state);}
+  // Confirmação manual, após conferência na XP, de que uma ordem desconhecida não chegou à corretora.
+  async resolveUnknown(id){const order=this.state.orders.find(o=>o.id===id);if(!order||!['unknown','submitting'].includes(order.status)||this.busy)throw Error('Somente ordens com resultado desconhecido podem ser resolvidas manualmente.');order.status='not-sent';order.resolvedAt=this.now();await this.persist(this.state);}
+  async reconcile(){
+    for(const order of this.state.orders.filter(o=>pendingStatuses.includes(o.status))){
+      const found=await this.broker.order({brokerOrderId:order.brokerOrderId,clientOrderId:order.id});
+      if(!found){if(order.brokerOrderId)throw Error(`Ordem ${order.brokerOrderId} não localizada na corretora.`);order.status='unknown';continue;}
+      if(!brokerStatus[found.status]||typeof found.brokerOrderId!=='string'||!Number.isInteger(found.filledQuantity)||found.filledQuantity<0||found.filledQuantity>order.quantity)throw Error('Resposta de reconciliação inválida.');
+      Object.assign(order,{status:brokerStatus[found.status],brokerOrderId:found.brokerOrderId,filledQuantity:found.filledQuantity,averagePrice:Number.isFinite(found.averagePrice)?found.averagePrice:null,fees:Number.isFinite(found.fees)?found.fees:null,reconciledAt:this.now()});
+    }
+    await this.persist(this.state);
+    return this.state.orders.filter(o=>pendingStatuses.includes(o.status));
+  }
+  observe(entry){this.state.observations.push({at:this.now(),...entry});this.state.observations=this.state.observations.slice(-200);}
   async tick(){
     if(this.busy||!this.state.enabled)return;
-    if(this.state.lastRun&&this.now()-this.state.lastRun<this.state.policy.intervalMinutes*60000)return;
+    const live=this.state.mode==='live',due=!this.state.lastRun||this.now()-this.state.lastRun>=this.state.policy.intervalMinutes*60000;
+    // Ordens pendentes são reconciliadas a cada verificação; novas compras respeitam o intervalo.
+    if(!due&&!(live&&this.state.orders.some(o=>pendingStatuses.includes(o.status))))return;
     this.busy=true;
     try{
       if(!this.broker.ready)throw Error('Conexão com a corretora indisponível.');
-      if(this.state.orders.some(o=>['submitting','unknown','accepted'].includes(o.status)))throw Error('Reconciliação de ordem pendente.');
+      if(live){
+        const pending=await this.reconcile();
+        if(pending.some(o=>o.status==='unknown'&&this.now()-o.createdAt>unknownGraceMs))throw Error('Envio inconclusivo não localizado na corretora. Confira na XP e resolva a ordem antes de continuar.');
+        if(pending.length){this.state.reason=`Acompanhando ordem ${pending[0].symbol} (${pending[0].status}); novas compras aguardam a execução.`;await this.persist(this.state);return;}
+        if(!due)return;
+      }
       this.state.lastRun=this.now();await this.persist(this.state);
-      const snapshot=await this.broker.snapshot();
-      const used=this.state.orders.filter(o=>o.day===dayKey(this.now())&&o.status!=='rejected').reduce((sum,o)=>sum+o.notional,0);
-      const planned=planPurchases(snapshot,this.state.policy,used,this.now());
-      // Uma ordem por ciclo; nova compra exige posição atualizada e reconciliação.
+      const snapshot=await this.broker.snapshot(this.state.policy.targets.map(t=>t.symbol));
+      const used=this.state.orders.filter(o=>o.day===dayKey(this.now())).reduce((sum,o)=>sum+committed(o),0);
+      let planned;
+      try{planned=planPurchases(snapshot,this.state.policy,used,this.now());}
+      catch(e){if(live)throw e;this.observe({error:e.message});this.state.reason=`Observação: ${e.message}`;await this.persist(this.state);return;}
+      if(!live){this.observe({proposals:planned});this.state.reason=planned.length?`Observação: compraria ${planned.map(o=>`${o.quantity} ${o.symbol}`).join(', ')}.`:'Observação: nenhuma compra elegível.';await this.persist(this.state);return;}
+      // Uma ordem por ciclo; a próxima só após reconciliação e posição atualizada.
       const proposal=planned[0];
       if(proposal&&this.state.enabled){
         const order={...proposal,id:randomUUID(),day:dayKey(this.now()),createdAt:this.now(),status:'submitting'};
         this.state.orders.push(order);await this.persist(this.state);
         if(!this.state.enabled){order.status='cancelled-local';await this.persist(this.state);return;}
         // Registro anterior ao envio impede repetição após reinício ou timeout.
-        try{const result=await this.broker.submit({...proposal,clientOrderId:order.id});if(!result||!['accepted','rejected'].includes(result.status)||typeof result.brokerOrderId!=='string')throw Error('Resposta inconclusiva.');order.status=result.status;order.brokerOrderId=result.brokerOrderId;}
-        catch{order.status='unknown';throw Error('Envio inconclusivo. Reconciliar na corretora antes de tentar novamente.');}
-        this.state.enabled=false;this.state.reason=order.status==='accepted'?'Ordem aceita; aguardando integração de reconciliação.':'Ordem rejeitada; revisar retorno da corretora.';
+        try{const result=await this.broker.submit({...proposal,clientOrderId:order.id});if(!result||!['accepted','rejected'].includes(result.status)||typeof result.brokerOrderId!=='string')throw Error('Resposta inconclusiva.');order.status=result.status;order.brokerOrderId=result.brokerOrderId;if(result.message)order.message=String(result.message).slice(0,200);}
+        catch{order.status='unknown';this.state.reason='Envio inconclusivo. O próximo ciclo procura a ordem na corretora antes de qualquer nova compra.';await this.persist(this.state);return;}
+        if(order.status==='rejected'){this.state.enabled=false;this.state.reason=`Ordem rejeitada pela corretora${order.message?`: ${order.message}`:''}. Revise antes de reativar.`;}
+        else this.state.reason=`Ordem aceita: ${order.quantity} ${order.symbol} a ${order.limitPrice}; acompanhando execução.`;
       }else this.state.reason='Ciclo concluído: nenhuma compra elegível.';
       await this.persist(this.state);
     }catch(e){await this.pause(e.message);}finally{this.busy=false;}
   }
 }
-export const disconnectedBroker={ready:false,name:'XP / MetaTrader 5',async snapshot(){throw Error('XP não conectada.');},async submit(){throw Error('XP não conectada.');}};
+export const disconnectedBroker={ready:false,name:'XP / MetaTrader 5',status:'Adaptador não configurado.',async check(){},async snapshot(){throw Error('XP não conectada.');},async submit(){throw Error('XP não conectada.');},async order(){throw Error('XP não conectada.');}};

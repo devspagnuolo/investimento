@@ -2,13 +2,13 @@
 
 Aplicativo de acompanhamento e automação de investimentos, com prioridade para o mercado brasileiro e a conta XP. O objetivo é consultar a carteira e executar operações dentro de regras previamente configuradas, reduzindo intervenções recorrentes. A expansão internacional fica para uma etapa posterior.
 
-**Estado atual:** painel local e base do motor de automação implementados. O conector XP/MetaTrader e a reconciliação das execuções ainda não estão implementados. A versão atual não está conectada a corretoras e não envia ordens reais. Dados fictícios só aparecem quando o usuário escolhe a demonstração do painel; não alimentam o motor operacional.
+**Estado atual:** painel local, motor de automação, ponte local com o MetaTrader 5 e reconciliação de ordens implementados. Com o MT5 da XP conectado e a conta conferida, o motor pode enviar ordens reais de compra dentro dos limites configurados. A ponte foi testada com um terminal simulado; a validação na conta XP real é o próximo passo, seguindo [operação com a XP](docs/operacao-xp-mt5.md). Dados fictícios só aparecem quando o usuário escolhe a demonstração do painel; não alimentam o motor operacional.
 
 Última atualização: 23/10/2026.
 
 ## Executar
 
-Requisito: Node.js 22 ou superior.
+Requisito: Node.js 22.9 ou superior. Para a conexão com a XP: Windows, MetaTrader 5 e Python 3.
 
 ```sh
 npm start
@@ -20,33 +20,29 @@ Abra http://127.0.0.1:4173 para a carteira ou http://127.0.0.1:4173/automation p
 
 ## Automação Brasil
 
-Abra http://127.0.0.1:4173/automation para configurar regras de compras, limites e reserva de saldo. A conexão XP está pendente; a ativação e o envio real permanecem bloqueados. O motor e seu contrato de integração estão descritos em [automação](docs/automation.md). Nenhuma conta externa foi conectada ou operação financeira enviada.
+Abra http://127.0.0.1:4173/automation para configurar regras de compras, limites e reserva de saldo. Para conectar a XP, siga [operação com a XP pelo MetaTrader 5](docs/operacao-xp-mt5.md). O motor e o contrato do adaptador estão em [automação](docs/automation.md).
 
 Implementado:
 
 - Política com tickers permitidos, pesos, intervalo, reserva e limites por compra e por dia.
-- Planejamento de compras à vista para ações, ETFs e FIIs, sujeito à classificação e habilitação fornecidas pelo futuro adaptador.
-- Validação de carteira, saldo, sessão de negociação, idade das cotações, lotes e preços limite.
-- Histórico persistente e bloqueio de reenvio quando o resultado de uma ordem é desconhecido.
-- Pausa de novos envios; reinício do processo desativa o motor.
+- Planejamento de compras à vista para ações, ETFs e FIIs, com validação de carteira, saldo, sessão, idade das cotações, lotes e preços limite.
+- Ponte local `connectors/mt5_bridge.py` (pacote oficial MetaTrader5) e adaptador `mt5-broker.mjs`: a ativação só é liberada quando a conta logada no terminal é a configurada.
+- Reconciliação: ordens abertas, parciais, executadas, canceladas e rejeitadas são acompanhadas a cada 15 segundos; a próxima compra só ocorre depois da anterior terminar.
+- Envio sem resposta fica "desconhecido", é procurado na corretora pelo identificador da ordem e nunca é reenviado automaticamente.
+- Modo observação opcional: lê a conta real e registra o que compraria, sem enviar ordens.
+- Trava de instância única, histórico persistente e desativação ao reiniciar.
 
-O motor ainda pausa após uma resposta de ordem aceita ou rejeitada. A operação contínua dependerá da reconciliação com a corretora: aceitação de uma ordem não significa execução. Vendas, resgates, transferências, derivativos, seleção preditiva de ativos e cálculo dos custos efetivos não estão implementados.
+Vendas, resgates, transferências, derivativos, seleção preditiva de ativos, feriados da B3 e cálculo de custos no orçamento não estão implementados.
 
-## Integração planejada: XP pelo MetaTrader 5
+## Integração XP pelo MetaTrader 5
 
-A primeira alternativa a validar é um **conector local para o terminal MetaTrader 5**, evitando depender de uma API web diretamente disponibilizada pela XP ao cliente.
+O caminho escolhido é um **conector local para o terminal MetaTrader 5**: o usuário faz login no terminal, a ponte Python conversa com ele pela API oficial e o servidor do InvestAI conversa com a ponte em `127.0.0.1`, autenticado por um token local. Não há automação de cliques no site da XP.
 
-Fluxo pretendido:
+Ainda é preciso confirmar com a XP a cobertura de ativos, se posições mantidas entre pregões aparecem no MT5, permissões para automação e custos. Até essa confirmação, `INVESTAI_MT5_CUSTODY_CONFIRMED=0` mantém a carteira como incompleta e o motor não compra. Não se presume acesso a CDBs, fundos ou Tesouro pelo MetaTrader.
 
-1. O usuário habilita o MetaTrader na XP e realiza o login no terminal com as credenciais fornecidas para essa plataforma.
-2. O conector local do InvestAI acessa o terminal configurado, verifica a conta e consulta posições, cotações e ordens disponíveis.
-3. O motor aplica as regras autorizadas, envia ordens e acompanha seus resultados pela reconciliação.
+Referências oficiais: [plataformas XP](https://www.xpi.com.br/plataformas/), [conexão de programas ao terminal MetaTrader](https://www.mql5.com/en/docs/python_metatrader5/mt5initialize_py) e [custos operacionais XP](https://www.xpi.com.br/custos-operacionais/).
 
-Esse fluxo é planejado, não uma integração já disponível. Ainda será necessário confirmar com a XP a cobertura de ativos, posições mantidas entre pregões, permissões para automação, autenticação e custos. Não se presume acesso a toda a custódia XP, CDBs, fundos ou Tesouro pelo MetaTrader.
-
-Referências oficiais: [plataformas XP](https://www.xpi.com.br/plataformas/), [conexão de programas ao terminal MetaTrader](https://www.mql5.com/en/docs/python_metatrader5/mt5initialize_py) e [custos operacionais XP](https://www.xpi.com.br/custos-operacionais/). Condições precisam ser verificadas na contratação.
-
-O login será feito pelo usuário no terminal. Senhas, assinatura eletrônica, tokens e chaves não devem ser enviados pelo chat, gravados no código, no armazenamento do navegador ou no GitHub. Automação de cliques no site da XP não está implementada e não é o caminho principal escolhido.
+Senhas, assinatura eletrônica e tokens da XP não devem ser enviados pelo chat, gravados no código, no `.env`, no armazenamento do navegador ou no GitHub. O `.env` guarda apenas o número da conta esperada e o token entre a ponte e o servidor.
 
 ## Custo inicial e disponibilidade
 
@@ -69,11 +65,10 @@ As metas são ilustrativas; o sistema não possui cotações ao vivo, previsão 
 
 ## Próximas etapas
 
-1. Implementar o conector local do MetaTrader e validar conta, cobertura e custos na XP.
-2. Implementar reconciliação de ordens, execuções parciais, taxas e recuperação de falhas.
-3. Adicionar persistência transacional, proteção de credenciais, trava de instância única e monitoramento.
-4. Habilitar operação real após configuração e validação da integração e dos limites do usuário.
-5. Avaliar outros produtos brasileiros e, posteriormente, integrações internacionais.
+1. Validar a ponte na conta XP real: custódia no MT5, saldo liquidado, fuso do servidor e custos.
+2. Incluir custos estimados no orçamento e calendário de feriados da B3.
+3. Inicialização automática com o Windows, alertas (e-mail ou celular) e persistência transacional.
+4. Vendas e rebalanceamento completo; depois, outros produtos brasileiros e integrações internacionais.
 
 ## Verificação
 
@@ -81,7 +76,7 @@ As metas são ilustrativas; o sistema não possui cotações ao vivo, previsão 
 npm test
 ```
 
-A suíte atual possui 16 testes de cálculos, limites, dados vencidos, persistência e bloqueios de execução. Esses testes não comprovam integração com a XP nem funcionamento em bolsa.
+`npm run test:bridge` verifica a ponte MT5 com um terminal simulado. São 21 testes do motor e 4 da ponte, cobrindo cálculos, limites, reconciliação, envio inconclusivo, observação e trava de instância. Eles não comprovam o funcionamento na conta XP real.
 
 ## Controle de alterações
 
