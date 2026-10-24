@@ -39,6 +39,7 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RestartCount 3 -Re
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description 'Inicia e monitora a ponte local XP/MT5 e o servidor InvestAI durante a sessão do usuário. Nunca ativa envio real.'
 Register-ScheduledTask -TaskName $taskName -InputObject $task -Force | Out-Null
+Start-ScheduledTask -TaskName $taskName
 
 Write-Host "Inicialização automática instalada para a sessão do usuário: $taskName"
 Write-Host 'O supervisor espera o MT5 conectado à XP e reinicia a ponte/servidor se encerrarem.'
